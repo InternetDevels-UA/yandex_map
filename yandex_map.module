@@ -1,0 +1,630 @@
+<?php
+
+/**
+ * @file
+ * module integration with yandex map.
+ */
+
+
+/**
+ * Yandex Maps API URL.
+ */
+define ('YANDEX_MAP_API_URL', 'http://api-maps.yandex.ru/2.0/');
+
+/**
+ * Yandex required default value for map center.
+ */
+define ('YANDEX_MAP_DEFAULT_CENTER', '50.71427070281011,25.317922346164476');
+
+module_load_include('inc', 'yandex_map', 'yandex_map.field');
+module_load_include('inc', 'yandex_map', 'yandex_map.static');
+module_load_include('inc', 'yandex_map', 'yandex_map.block');
+module_load_include('inc', 'yandex_map', 'yandex_map.admin');
+module_load_include('inc', 'yandex_map', 'yandex_map.entity');
+
+
+/**
+ * Add Yandex API script to <head> tag
+ */
+function yandex_map_init_api($params = array()) {
+  static $enabled = FALSE;
+  if ($enabled) {
+    return;
+  }
+
+  $default_params = array(
+    'lang'   => variable_get('yandex_map_interface_language', 'ru-RU'),
+    'load'   => variable_get('yandex_map_packages', 'package.full'),
+    'wizard' => 'Drupal_yandex_map_php'
+  );
+  $params = array_merge($default_params, $params);
+  $data = array(
+    '#type'  => 'html_tag',
+    '#tag'   => 'script',
+    '#attributes' => array(
+      'src' => url(YANDEX_MAP_API_URL, array('query' => $params)),
+    ),
+    '#value' => '',
+  );
+  drupal_add_html_head($data, 'yandex_map');
+
+  // Send all data to js.
+  drupal_add_js(
+    array(
+      'yandex_map' => array(
+        'path' => drupal_get_path('module', 'yandex_map'),
+      ),
+    ),
+    'setting'
+  );
+
+  // Add css and js scripts.
+  drupal_add_js(drupal_get_path('module', 'yandex_map') . '/yandex_map.js');
+  drupal_add_css(drupal_get_path('module', 'yandex_map') . '/yandex_map.css');
+
+  // Yandex MAp API 2.0 does not implemented GeoCollectionBounds.
+  // See http://clubs.ya.ru/mapsapi/replies.xml?item_no=26985 for more info.
+  //drupal_add_js(drupal_get_path('module', 'yandex_map') . '/collectionWithBounds.js');
+}
+
+/**
+ * Implements hook_views_api().
+ */
+function yandex_map_views_api() {
+  return array(
+    'api'  => '3',
+    'path' => drupal_get_path('module', 'yandex_map') . '/views',
+  );
+}
+
+
+/**
+ * Implements hook_menu()
+ */
+function yandex_map_menu() {
+  $items['admin/config/services/yandex'] = array(
+    'title' => 'Yandex Map',
+    'description' => 'Administration Yandex Map.',
+    'page callback' => 'system_admin_menu_block_page',
+    'access arguments' => array('administer yandex_map'),
+    'file' => 'system.admin.inc',
+    'file path' => drupal_get_path('module', 'system'),
+  );
+  $items['admin/config/services/yandex/delete'] = array(
+    'title'            => 'Multiple delete',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('yandex_map_multiple_confirm_delete'),
+    'access arguments' => array('administer yandex_map'),
+    'type'             => MENU_SUGGESTED_ITEM,
+  );
+  $items['admin/config/services/yandex/admin'] = array(
+    'title'            => 'Settings',
+    'description'      => 'Configure Yandex Map settings',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('yandex_map_settings'),
+    'file'             => 'yandex_map.admin.inc',
+    'access arguments' => array('administer yandex_map'),
+    'type'             => MENU_NORMAL_ITEM,
+  );
+  $items['admin/config/services/yandex/yandex-map'] = array(
+    'title'            => 'Maps',
+    'description'      => 'Manage maps',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('yandex_map_list_page'),
+    'access arguments' => array('administer yandex_map'),
+  );
+  $items['admin/config/services/yandex/yandex-map-marker'] = array(
+    'title'            => 'Markers',
+    'description'      => 'Manage markers',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('yandex_map_list_page', 'yandex_map_marker'),
+    'access arguments' => array('administer yandex_map'),
+  );
+  $items['admin/config/services/yandex/yandex-map/create'] = array(
+    'title'            => 'Add map',
+    'description'      => 'Create new map',
+    'page callback'    => 'yandex_map_add',
+    'access arguments' => array('create yandex_map entities'),
+    'type'             => MENU_LOCAL_ACTION,
+  );
+  $items['admin/config/services/yandex/yandex-map-marker/create'] = array(
+    'title'            => 'Add marker',
+    'description'      => 'Create new marker',
+    'page callback'    => 'yandex_map_marker_add',
+    'access arguments' => array('create yandex_map entities'),
+    'type'             => MENU_LOCAL_ACTION,
+  );
+  $items['yandex-map/%yandex_map'] = array(
+    'title callback'   => 'yandex_map_title',
+    'title arguments'  => array(1),
+    'page callback'    => 'yandex_map_view',
+    'page arguments'   => array(1),
+    'access arguments' => array('view any yandex_map entity'),
+  );
+  $items['yandex-map/%yandex_map/view'] = array(
+    'title'            => 'View',
+    'type'             => MENU_DEFAULT_LOCAL_TASK,
+    'weight'           => -10,
+  );
+  $items['yandex-map/%yandex_map/edit'] = array(
+    'title'            => 'Edit',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('yandex_map_form', 1),
+    'access arguments' => array('edit any yandex_map entity'),
+    'weight'           => 0,
+    'type'             => MENU_LOCAL_TASK,
+  );
+  $items['yandex-map/%yandex_map/delete'] = array(
+    'title'            => 'Delete',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('yandex_map_delete_form', 1),
+    'access arguments' => array('edit any yandex_map entity'),
+    'weight'           => 1,
+    'type'             => MENU_LOCAL_TASK,
+  );
+  $items['yandex-map-marker/%yandex_map_marker/edit'] = array(
+    'title'            => 'Edit',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('yandex_map_marker_form', 1),
+    'access arguments' => array('edit any yandex_map entity'),
+    'weight'           => 0,
+    'type'             => MENU_LOCAL_TASK,
+  );
+  $items['yandex-map-marker/%yandex_map_marker/delete'] = array(
+    'title'            => 'Delete',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('yandex_map_marker_delete_form', 1),
+    'access arguments' => array('edit any yandex_map entity'),
+    'weight'           => 1,
+    'type'             => MENU_LOCAL_TASK,
+  );
+  return $items;
+}
+
+
+/**
+ * Implements hook_theme().
+ */
+function yandex_map_theme() {
+  $items = array();
+  $items['yandex_map'] = array(
+    'variables' => array(
+      'map_id'      => FALSE,
+      'elements'    => NULL,
+      'mode'        => 'view',
+
+      'zoom'        => NULL,
+      'center'      => NULL,
+      'type'        => NULL,
+
+      'show_center' => TRUE,
+      'show_zoom'   => TRUE,
+
+      'content'     => array(),
+    ),
+    'path'     => drupal_get_path('module', 'yandex_map') . '/theme',
+    'template' => 'yandex-map',
+    'file'     => 'yandex_map.theme.inc',
+  );
+  $items['yandex_map_controls_table'] = array(
+    'render element' => 'element',
+  );
+  return $items;
+}
+
+
+/**
+ * Implements hook_permission().
+ */
+function yandex_map_permission() {
+  $permissions = array(
+    'administer yandex_map' =>  array(
+      'title' => t('Administer eyandex_map entities'),
+    ),
+    'view any yandex_map entity' => array(
+      'title' => t('View any Yandex map entity'),
+    ),
+    'edit any yandex_map entity' => array(
+      'title' => t('Edit any Yandex map entity'),
+    ),
+    'edit own yandex_map entity' => array(
+      'title' => t('Edit own Yandex map entity'),
+    ),
+    'create yandex_map entities' => array(
+      'title' => t('Create Yandex map Entities'),
+    ),
+  );
+  return $permissions;
+}
+
+
+/**
+ * Provides a list of existing yandex_map and the ability to add more. Tabs
+ * provide field and display management.
+ */
+function yandex_map_admin_page() {
+  $content = array();
+  $content[] = array(
+    '#type' => 'item',
+    '#markup' => t('Administration page for Yandex maps.')
+  );
+
+  $content[] = array(
+    '#type' => 'item',
+    '#markup' => l(t('Add an Yandex map'), 'yandex_map/add'),
+  );
+
+  $content['table'] = yandex_map_list_entities();
+
+  return $content;
+}
+
+
+/**
+ * Return array with markers.
+ */
+function yandex_map_markers() {
+  static $markers = array();
+  if ($markers) {
+    return $markers;
+  }
+  $mids =  db_select('yandex_map_marker', 'yandex_map_marker')
+    ->fields('yandex_map_marker', array('mid'))
+    ->execute()
+    ->fetchCol();
+  $entitys = yandex_map_marker_load_multiple($mids);
+  foreach ($entitys as $marker) {
+    $image = field_get_items('yandex_map_marker', $marker, 'field_image');
+    $markers[] = array(
+      'mid'   => $marker->mid,
+      'title' => $marker->title,
+      'path'  => file_create_url($image[0]['uri']),
+    );
+  }
+  return $markers;
+}
+
+
+/**
+ * Implements hook_field_extra_fields()
+ *
+ * This exposes the "extra fields" (usually properties that can be configured
+ * as if they were fields) of the entity as pseudo-fields
+ * so that they get handled by the Entity and Field core functionality.
+ * Node titles get treated in a similar manner.
+ */
+function yandex_map_field_extra_fields() {
+  $form_elements['title'] = array(
+    'label'       => t('title'),
+    'description' => t('Title'),
+    'weight'      => -5,
+  );
+  $form_elements['zoom'] = array(
+    'label'       => t('Zoom'),
+    'description' => t('Yandex map zoom'),
+    'weight'      => -5,
+  );
+  $form_elements['center'] = array(
+    'label'       => t('Center coordinates'),
+    'description' => t('Yandex map Center coordinates'),
+    'weight'      => -5,
+  );
+  $form_elements['block'] = array(
+    'label'       => t('Create block'),
+    'description' => t('Create block fot this map'),
+    'weight'      => -5,
+  );
+  $display_elements['created'] = array(
+    'label'       => t('Creation date'),
+    'description' => t('Creation date map'),
+    'weight'      => 0,
+  );
+  $display_elements['title'] = array(
+    'label'       => t('Title'),
+    'description' => t('Title map'),
+    'weight'      => 0,
+  );
+  $display_elements['zoom'] = array(
+    'label'       => t('Zoom'),
+    'description' => t('Yandex map zoom'),
+    'weight'      => 0,
+  );
+  $display_elements['center'] = array(
+    'label'       => t('Center coordinates'),
+    'description' => t('Yandex map Center coordinates'),
+    'weight'      => 0,
+  );
+
+  // Since we have only one bundle type, we'll just provide the extra_fields
+  // for it here.
+  $extra_fields['yandex_map']['yandex_map']['form'] = $form_elements;
+  $extra_fields['yandex_map']['yandex_map']['display'] = $display_elements;
+
+  $marker_form_elements['title'] = array(
+    'label'       => t('Title'),
+    'description' => t('Title'),
+    'weight'      => -5,
+  );
+  $marker_display_elements['title'] = array(
+    'label'       => t('Title'),
+    'description' => t('Title marker'),
+    'weight'      => 0,
+  );
+  $extra_fields['yandex_map_marker']['yandex_map_marker']['form'] = $marker_form_elements;
+  $extra_fields['yandex_map_marker']['yandex_map_marker']['display'] = $marker_display_elements;
+  return $extra_fields;
+}
+
+/**
+ * Implements hook_search_info().
+ */
+function yandex_map_search_info() {
+  return array(
+    'title' => 'Yandex map',
+    'path'  => 'yandex_map',
+  );
+}
+
+/**
+ * Implements hook_field_display_ENTITY_TYPE_alter().
+ */
+function yandex_map_field_display_node_alter(&$display, $context) {
+  // Hide field labels in search index.
+  if ($context['view_mode'] == 'search_index') {
+    $display['label'] = 'hidden';
+  }
+}
+
+/**
+ * Implements hook_search_execute().
+ */
+function yandex_map_search_execute($keys = NULL, $conditions = NULL) {
+  // Build matching conditions.  
+  $query = db_select('search_index', 'i', array('target' => 'slave'))
+    ->extend('SearchQuery')
+    ->extend('PagerDefault');
+  $query->join('yandex_map', 'y', 'y.mid = i.sid');
+  $query->searchExpression($keys, 'yandex_map');
+
+  // Insert special keywords.
+  $query->setOption('type', 'y.type');
+
+  // Only continue if the first pass query matches.
+  if (!$query->executeFirstPass()) {
+    return array();
+  }
+
+  // Add the ranking expressions.
+  // @TODO
+  
+  // Load results.
+  $find = $query
+    ->limit(10)
+    ->execute();
+  $results = array();
+  foreach ($find as $item) {
+    // Render the map.
+    $map   = yandex_map_load($item->sid);
+    $build = yandex_map_view($map, 'search_result');
+    $map->rendered = drupal_render($build);
+
+    $extra = module_invoke_all('yandex_map_search_result', $map);
+
+    $uri = entity_uri('yandex_map', $map);
+    $results[] = array(
+      'link'       => url($uri['path'], array_merge($uri['options'], array('absolute' => TRUE))),
+      'type'       => 'Yandex map',
+      'title'      => $map->title,
+      'user'       => theme('username', array('account' => user_load($map->uid))),
+      'date'       => $map->changed,
+      'yandex_map' => $map,
+      'extra'      => $extra,
+      'snippet'    => search_excerpt($keys, $map->rendered),
+    );
+  }
+  
+  return $results;
+}
+
+/**
+ * Implements hook_update_index().
+ */
+function yandex_map_update_index() {
+  $limit = (int) variable_get('search_cron_limit', 100);
+
+  $result = db_query_range("SELECT y.mid FROM {yandex_map} y LEFT JOIN {search_dataset} d ON d.type = 'yandex_map' AND d.sid = y.mid WHERE d.sid IS NULL OR d.reindex <> 0 ORDER BY d.reindex ASC, y.mid ASC", 0, $limit, array(), array('target' => 'slave'));
+
+  foreach ($result as $map) {
+    _yandex_map_index_map($map);
+  }
+}
+
+/**
+ * Index a single map.
+ *
+ * @param $map
+ *   The map to index.
+ */
+function _yandex_map_index_map($map) {
+  $map = yandex_map_load($map->mid);
+
+  // Save the changed time of the most recent indexed maps, for the search
+  // results half-life calculation.
+  variable_set('yandex_map_cron_last', $map->changed);
+
+  // Render the map.
+  $build = yandex_map_view($map, 'search_index');
+  $map->rendered = drupal_render($build);
+
+  $text = '<h1>' . check_plain($map->title) . '</h1>' . $map->rendered;
+
+  // Fetch extra data normally not visible
+  $extra = module_invoke_all('yandex_map_update_index', $map);
+  foreach ($extra as $t) {
+    $text .= $t;
+  }
+
+  // Update index
+  search_index($map->mid, 'yandex_map', $text);
+}
+
+/**
+ * Returns the map type name of the passed map or map type string.
+ */
+function yandex_map_type_get_name($map) {
+  $type  = is_object($map) ? $map->type : $map;
+  $types = _yandex_map_types_build()->names;
+  return isset($types[$type]) ? $types[$type] : FALSE;
+}
+
+/**
+ * Builds and returns the list of available map types.
+ */
+function _yandex_map_types_build($rebuild = FALSE) {
+  if (!$rebuild) {
+    $map_types = &drupal_static(__FUNCTION__);
+    if (isset($map_types)) {
+      return $map_types;
+    }
+  }
+
+  $map_types = (object) array(
+    'types' => array(),
+    'names' => array(),
+  );
+
+  // @TODO finish after the implementation of map types
+}
+
+/**
+ * Implements hook_search_status().
+ */
+function yandex_map_search_status() {
+  $total = db_select('yandex_map', 'y')
+    ->fields('y', array('mid'))
+    ->countQuery()
+    ->execute()
+    ->fetchField();
+  $remaining = db_select('yandex_map', 'y');
+  $remaining->leftjoin('search_dataset', 'd', 'd.type = :type AND d.sid = y.mid', array(':type' => 'yandex_map'));
+  $remaining
+    ->condition(db_or()
+      ->isNull('d.sid')
+      ->condition('d.reindex', 0, '!=')
+    )
+    ->fields('y', array('mid'));
+  $remaining = $remaining->countQuery()->execute()->fetchField();
+  return array('remaining' => $remaining, 'total' => $total);
+}
+
+/**
+ * Implements hook_search_reset().
+ */
+function yandex_map_search_reset() {
+  db_update('search_dataset')
+    ->fields(array('reindex' => REQUEST_TIME))
+    ->condition('type', 'yandex_map')
+    ->execute();
+}
+
+/**
+ *
+ */
+function yandex_map_build_content($map, $view_mode = 'full', $langcode = NULL) {
+  if (!isset($langcode)) {
+    $langcode = $GLOBALS['language_content']->language;
+  }
+
+  // Remove previously built content, if exists.
+  $map->content = array();
+
+  // Build fields content.
+  // In case of a multiple view, node_view_multiple() already ran the
+  // 'prepare_view' step. An internal flag prevents the operation from running
+  // twice.
+  field_attach_prepare_view('yandex_map', array($map->mid => $map), $view_mode, $langcode);
+  entity_prepare_view('yandex_map', array($map->mid => $map), $langcode);
+  $map->content += field_attach_view('yandex_map', $map, $view_mode, $langcode);
+
+  // Always display a read more link on teasers because we have no way
+  // to know when a teaser view is different than a full view.
+  $links = array();
+  $map->content['links'] = array(
+    '#theme' => 'links__yandex_map',
+    '#pre_render' => array('drupal_pre_render_links'),
+    '#attributes' => array('class' => array('links', 'inline')),
+  );
+  if ($view_mode == 'teaser') {
+    $map_title_stripped = strip_tags($map->title);
+    $links['node-readmore'] = array(
+      'title' => t('Read more<span class="element-invisible"> about @title</span>', array('@title' => $map_title_stripped)),
+      'href' => 'yandex-map/' . $map->nid,
+      'html' => TRUE,
+      'attributes' => array('rel' => 'tag', 'title' => $map_title_stripped),
+    );
+  }
+  $map->content['links']['yandex_map'] = array(
+    '#theme' => 'links__yandex_map__yandex_map',
+    '#links' => $links,
+    '#attributes' => array('class' => array('links', 'inline')),
+  );
+
+  // Allow modules to make their own additions to the node.
+  module_invoke_all('yandex_map_view', $map, $view_mode, $langcode);
+  module_invoke_all('entity_view', $map, 'yandex_map', $view_mode, $langcode);
+}
+
+
+/**
+ * Decoding propertyes and add to yandex map entity.
+ *
+ * @param $json
+ *   json propertyes.
+ * @param $entity
+ *   yandex map entity.
+ * @return
+ *   An updated yandex map entity.
+ *
+ */
+function yandex_map_json_decode($json, $map) {
+  $settings = drupal_json_decode($json);
+  $map->zoom  = $settings['zoom'];
+  $map->type  = $settings['type'];
+  $map->center = $settings['center'];
+  $map->geoobjects = array();
+  foreach ($settings['content'] as $geoobject) {
+    $geoobject['coordinates'] = serialize($geoobject['coordinates']);
+    $map->geoobjects[field_language('yandex_map', $map, 'geoobjects')][] = $geoobject;
+  }
+  return $map;
+}
+
+
+/**
+ * Ganarate array from yandex map object for import to js.
+ *
+ * @param $map
+ *   yandex map entity.
+ * @return
+ *   An array.
+ *
+ */
+function yandex_map_entity_to_geoobjects($entity) {
+  $elements = array();
+  $geoobjects = field_get_items('yandex_map', $entity, 'geoobjects');
+  foreach ((array) $geoobjects as $geoobject) {
+    if ($geoobject) {
+      $elements[] = array(
+        'coordinates' => unserialize($geoobject['coordinates']),
+        'description' => $geoobject['description'],
+        'color'       => $geoobject['color'],
+        'icon'        => $geoobject['icon'],
+        'opacity'     => $geoobject['opacity'],
+        'thickness'   => $geoobject['thickness'],
+        'type'        => $geoobject['type'],
+        'entity_id'   => $entity->mid,
+      );
+    }
+  }
+  return $elements;
+}

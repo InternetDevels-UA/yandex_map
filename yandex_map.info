@@ -1,0 +1,27 @@
+name = Yandex map
+description = 
+core = 7.x
+package = Yandex
+configure = admin/config/services/yandex
+dependencies[] = field
+dependencies[] = views
+files[] = yandex_map.module
+files[] = yandex_map.admin.inc
+files[] = theme/yandex_map.theme.inc
+files[] = yandex_map.static_data.inc
+files[] = yandex_map.test
+
+;Views
+files[] = views/yandex_map.views.inc
+files[] = views/plugins/yandex_map_plugin_style_yandex_map.inc
+files[] = views/handlers/yandex_map_handler_field_field.inc
+files[] = views/handlers/yandex_map_handler_argument_mid.inc
+files[] = views/handlers/yandex_map_handler_field_title.inc
+files[] = views/handlers/yandex_map_handler_field_map_link.inc
+files[] = views/handlers/yandex_map_handler_field_map_link_edit.inc
+files[] = views/handlers/yandex_map_handler_field_map_link_delete.inc
+
+version = "7.x-1.x-dev"
+core = "7.x"
+project = "Yandex"
+datestamp = "1337991209"

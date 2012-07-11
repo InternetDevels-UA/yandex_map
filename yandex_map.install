@@ -1,0 +1,286 @@
+<?php
+
+/**
+ * @file
+ * Install for a yandex map - need to create the base table for our entity.
+ */
+
+
+/**
+ * Implements hook_install().
+ */
+function yandex_map_install() {
+  _field_info_collate_fields(TRUE);
+  _field_info_collate_types(TRUE);
+  if (!field_info_field('geoobjects')) {
+    $field = array(
+      'field_name'   => 'geoobjects',
+      'type'         => 'geoobjects',
+      'entity_types' => array('yandex_map'),
+      'cardinality'  => -1,
+      // Although we would prefer to not allow deleting this field, we can not
+      // lock it, as it will not allow adding it to other bundles.
+      'locked'       => FALSE,
+    );
+    $field = field_create_field($field);
+  }
+  if (!field_info_instance('yandex_map', 'geoobjects', 'yandex_map')) {
+    $instance = array(
+      'field_name'  => 'geoobjects',
+      'bundle'      => 'yandex_map',
+      'entity_type' => 'yandex_map',
+      'label'       => st('Geoobjects'),
+      'required'    => FALSE,
+    );
+    field_create_instance($instance);
+  }
+  if (!field_info_instance('yandex_map_marker', 'field_image', 'yandex_map_marker')) {
+    $instance = array(
+      'field_name'  => 'field_image',
+      'bundle'      => 'yandex_map_marker',
+      'entity_type' => 'yandex_map_marker',
+      'label'       => st('Image'),
+      'required'    => TRUE,
+      'settings'    => array(
+        'max_filesize' => '64 KB',
+        'max_resolution' => '50x50',
+      ),
+    );
+    field_create_instance($instance);
+  }
+
+  // Set default position for our custom contolbar.
+  variable_set("yandex_map_controls_editTools_top", 35);
+  variable_set("yandex_map_controls_editTools_left", 5);
+}
+
+/**
+ * Implements hook_schema().
+ */
+function yandex_map_schema() {
+  $schema = array();
+  $schema['yandex_map'] = array(
+    'description' => 'The base table for our Yandex map entity.',
+      'fields' => array(
+        'mid' => array(
+          'description' => 'Primary key of the Yandex map entity.',
+          'type' => 'serial',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+        'uid' => array(
+          'description' => 'The author user id.',
+          'type' => 'int',
+          'not null' => TRUE,
+          'default' => 0,
+        ),
+        'title' => array(
+          'description' => 'A title of the map.',
+          'type' => 'varchar',
+          'length' => 255,
+          'not null' => TRUE,
+          'default' => '',
+        ),
+        'zoom' => array(
+          'description' => 'A zoom of the map.',
+          'type' => 'int',
+          'not null' => TRUE,
+          'default' => 0,
+        ),
+        'type' => array(
+          'description' => 'A type of the map.',
+          'type' => 'varchar',
+          'length' => 255,
+          'not null' => TRUE,
+          'default' => '',
+        ),
+        'block' => array(
+          'description' => 'Create block for map.',
+          'type' => 'int',
+          'not null' => TRUE,
+          'default' => 0,
+        ),
+        'center' => array(
+          'description' => 'A coordinates of the center of the map.',
+          'type' => 'varchar',
+          'length' => 255,
+          'not null' => TRUE,
+          'default' => '',
+        ),
+        'changed' => array(
+          'description' => 'The Unix timestamp of the map changing time.',
+          'type' => 'int',
+          'not null' => TRUE,
+          'default' => 0,
+        ),
+        'created' => array(
+          'description' => 'The Unix timestamp of the map creation time.',
+          'type' => 'int',
+          'not null' => TRUE,
+          'default' => 0,
+        ),
+      ),
+    'primary key' => array('mid'),
+  );
+  $schema['yandex_map_marker'] = array(
+    'description' => 'The base table for our Yandex map marker entity.',
+      'fields' => array(
+        'mid' => array(
+          'description' => 'Primary key of the Yandex map marker entity.',
+          'type' => 'serial',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+        'title' => array(
+          'description' => 'A title of the map.',
+          'type' => 'varchar',
+          'length' => 255,
+          'not null' => TRUE,
+          'default' => '',
+        ),
+        'uid' => array(
+          'description' => 'The author user id.',
+          'type' => 'int',
+          'not null' => TRUE,
+          'default' => 0,
+        ),
+        'changed' => array(
+          'description' => 'The Unix timestamp of the map changing time.',
+          'type' => 'int',
+          'not null' => TRUE,
+          'default' => 0,
+        ),
+        'created' => array(
+          'description' => 'The Unix timestamp of the map creation time.',
+          'type' => 'int',
+          'not null' => TRUE,
+          'default' => 0,
+        ),
+      ),
+    'primary key' => array('mid'),
+  );
+
+  return $schema;
+}
+
+/**
+ * Implements hook_field_schema().
+ */
+function yandex_map_field_schema($field) {
+  $indexes = array();
+  $columns = array();
+  switch ($field['type']) {
+    case 'geoobjects' :
+      $columns = array(
+        'description' => array(
+          'type'     => 'text',
+          'size'     => 'big',
+          'not null' => FALSE,
+        ),
+        'color' => array(
+          'type'     => 'varchar',
+          'length'   => 32,
+          'not null' => FALSE,
+        ),
+        'number' => array(
+          'type'     => 'int',
+          'unsigned' => TRUE,
+          'not null' => FALSE,
+        ),
+        'marker' => array(
+          'type'     => 'int',
+          'unsigned' => TRUE,
+          'not null' => FALSE,
+        ),
+        'thickness' => array(
+          'type'     => 'int',
+          'unsigned' => TRUE,
+          'not null' => FALSE,
+        ),
+        'opacity' => array(
+          'type'     => 'int',
+          'unsigned' => TRUE,
+          'not null' => FALSE,
+        ),
+        'type' => array(
+          'type'     => 'varchar',
+          'length'   => 32,
+          'not null' => FALSE,
+        ),
+        'icon' => array(
+          'type'     => 'varchar',
+          'length'   => 32,
+          'not null' => FALSE,
+        ),
+        'coordinates' => array(
+          'description' => 'The polygon serialised coordinats.',
+          'type' => 'blob',
+          'not null' => TRUE,
+          'size' => 'big',
+          'translatable' => TRUE,
+        ),
+      );
+      $indexes = array(
+        'marker' => array('marker'),
+      );
+      break;
+
+  }
+
+  $return = array(
+    'columns' => $columns,
+    'indexes' => $indexes
+  );
+  if (isset($foreign_keys)) {
+    $return['foreign_keys'] = $foreign_keys;
+  }
+  return $return;
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function yandex_map_uninstall() {
+  $vars = array(
+    'yandex_map_api_key',
+    'yandex_map_interface_language',
+
+    // Default map settings.
+    'yandex_map_default_center',
+    'yandex_map_default_zoom',
+
+    'yandex_map_default_width',
+    'yandex_map_default_height',
+    'yandex_map_default_behavior',
+    'yandex_map_enabled_map_types',
+    'yandex_map_default_type',
+    'yandex_map_mapTools',
+    'yandex_map_editTools',
+
+    // Search vairables
+    'yandex_map_cron_last',
+  );
+
+  // Map tools settings.
+  module_load_include('inc', 'yandex_map', 'yandex_map.static');
+  $map_settings = yandex_map_controls();
+  foreach ($map_settings as $key => $data) {
+    $vars[] = "yandex_map_controls_{$key}";
+    foreach (array('left', 'right', 'top', 'bottom') as $pos) {
+      $vars[] = "yandex_map_controls_{$key}_{$pos}";
+    }
+  }
+
+  foreach ($vars as $var) {
+    variable_del($var);
+  }
+
+  foreach (field_read_fields(array('module' => 'yandex_map'), array('include_inactive' => TRUE)) as $field) {
+    module_invoke($field['storage']['module'], 'field_storage_delete_field', $field);
+    $instances = field_read_instances(array('field_id' => $field['id']), array('include_inactive' => TRUE));
+    foreach ($instances as $instance) {
+      field_delete_instance($instance, FALSE);
+    }
+    field_delete_field($field['field_name']);
+  }
+}
