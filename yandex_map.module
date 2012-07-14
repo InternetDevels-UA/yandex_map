@@ -219,19 +219,19 @@ function yandex_map_theme() {
 function yandex_map_permission() {
   $permissions = array(
     'administer yandex_map' =>  array(
-      'title' => t('Administer eyandex_map entities'),
+      'title' => t('Administer maps'),
     ),
     'view any yandex_map entity' => array(
-      'title' => t('View any Yandex map entity'),
+      'title' => t('View any map'),
     ),
     'edit any yandex_map entity' => array(
-      'title' => t('Edit any Yandex map entity'),
+      'title' => t('Edit any map'),
     ),
     'edit own yandex_map entity' => array(
-      'title' => t('Edit own Yandex map entity'),
+      'title' => t('Edit own map'),
     ),
     'create yandex_map entities' => array(
-      'title' => t('Create Yandex map Entities'),
+      'title' => t('Create maps'),
     ),
   );
   return $permissions;
@@ -295,25 +295,11 @@ function yandex_map_markers() {
  */
 function yandex_map_field_extra_fields() {
   $form_elements['title'] = array(
-    'label'       => t('title'),
+    'label'       => t('Title'),
     'description' => t('Title'),
     'weight'      => -5,
   );
-  $form_elements['zoom'] = array(
-    'label'       => t('Zoom'),
-    'description' => t('Yandex map zoom'),
-    'weight'      => -5,
-  );
-  $form_elements['center'] = array(
-    'label'       => t('Center coordinates'),
-    'description' => t('Yandex map Center coordinates'),
-    'weight'      => -5,
-  );
-  $form_elements['block'] = array(
-    'label'       => t('Create block'),
-    'description' => t('Create block fot this map'),
-    'weight'      => -5,
-  );
+
   $display_elements['created'] = array(
     'label'       => t('Creation date'),
     'description' => t('Creation date map'),
@@ -322,16 +308,6 @@ function yandex_map_field_extra_fields() {
   $display_elements['title'] = array(
     'label'       => t('Title'),
     'description' => t('Title map'),
-    'weight'      => 0,
-  );
-  $display_elements['zoom'] = array(
-    'label'       => t('Zoom'),
-    'description' => t('Yandex map zoom'),
-    'weight'      => 0,
-  );
-  $display_elements['center'] = array(
-    'label'       => t('Center coordinates'),
-    'description' => t('Yandex map Center coordinates'),
     'weight'      => 0,
   );
 
