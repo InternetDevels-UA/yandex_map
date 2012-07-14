@@ -494,6 +494,8 @@ function yandex_map_form($form, &$form_state, $entity) {
     '#attributes' => array(
       'id' => 'yandex_map_' . $entity->mid . '_settings',
     ),
+    '#prefix' => '<div style="display:none">',
+    '#suffix' => '</div>',
   );
   $form['yandex_map'] = array(
     '#type'  => 'value',
@@ -569,6 +571,7 @@ function yandex_map_form_submit($form, &$form_state) {
  */
 function yandex_map_edit_delete($form, &$form_state) {
   if (!empty($form_state['values']['yandex_map'])) {
+    $destination = array();
     if (isset($_GET['destination'])) {
       $destination = drupal_get_destination();
       unset($_GET['destination']);
@@ -842,6 +845,7 @@ function yandex_map_marker_form_submit($form, &$form_state) {
  */
 function yandex_map_marker_edit_delete($form , &$form_state ) {
   if (!empty($form_state['values']['yandex_map_marker'])) {
+    $destination = array();
     if (isset($_GET['destination'])) {
       $destination = drupal_get_destination();
       unset($_GET['destination']);
