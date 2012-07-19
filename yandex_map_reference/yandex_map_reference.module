@@ -89,7 +89,7 @@ function yandex_map_reference_field_validate($entity_type, $entity, $field, $ins
   if ($instance['widget']['type'] == 'yandex_map_reference_embedded') {
     return;
   }
-  // Extract nids to check.
+  // Extract mids to check.
   $ids = array();
 
   // First check non-numeric "mid's to avoid losing time with them.
@@ -263,7 +263,7 @@ function yandex_map_reference_field_presave($entity_type, $entity, $field, $inst
   if ($instance['widget']['type'] == 'yandex_map_reference_embedded') {
     foreach ($items as $delta => $item) {
       $map = yandex_map_json_decode($item['mid']['settings'], $item['mid']['yandex_map']);
-      $map->title = $entity->title;
+      $map->title = entity_label($entity_type, $entity);
       $map = yandex_map_save($map);
       $items[$delta]['mid'] = $map->mid;
     }
@@ -277,7 +277,7 @@ function yandex_map_reference_field_presave($entity_type, $entity, $field, $inst
  */
 function yandex_map_reference_autocomplete_value($element, $input = FALSE, $form_state) {
   if ($input === FALSE) {
-    // We're building the displayed 'default value': expand the raw nid into
+    // We're building the displayed 'default value': expand the raw mid into
     // "map title [mid:m]".
     $mid = $element['#default_value'];
     if (!empty($mid)) {
@@ -580,20 +580,23 @@ function yandex_map_reference_options_list($field) {
   return $options;
 }
 
+
 /**
- * Implements hook_field_ui_field_overview_form_form_alter().
+ * Implements hook_form_form_alter().
  * Very ugly way to forbid using multiple map fields in one entity.
  */
-function yandex_map_reference_field_ui_field_overview_form_form_alter(&$form, &$form_state) {
-  $widgets = &drupal_static('field_ui_widget_type_options', array());
-  list($entity_type, $bundle) = $form_state['build_info']['args'];
-  $bundle = field_extract_bundle($entity_type, $bundle);
-  $info = _field_info_collate_fields();
-  foreach ($info['fields'] as $field_info) {
-    if (isset($field_info['bundles'][$entity_type]) && in_array($bundle, $field_info['bundles'][$entity_type])) {
-      if ($field_info['type'] == 'yandex_map_reference') {
-        $widgets['yandex_map_reference'] = array();
-        break;
+function yandex_map_reference_form_alter(&$form, &$form_state, $form_id) {
+ if ($form_id == 'field_ui_field_overview_form') {
+    $widgets = &drupal_static('field_ui_widget_type_options', array());
+    list($entity_type, $bundle) = $form_state['build_info']['args'];
+    $bundle = field_extract_bundle($entity_type, $bundle);
+    $info = _field_info_collate_fields();
+    foreach ($info['fields'] as $field_info) {
+      if (isset($field_info['bundles'][$entity_type]) && in_array($bundle, $field_info['bundles'][$entity_type])) {
+        if ($field_info['type'] == 'yandex_map_reference') {
+          unset($widgets['yandex_map_reference']);
+          break;
+        }
       }
     }
   }
