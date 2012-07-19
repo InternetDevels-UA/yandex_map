@@ -137,7 +137,7 @@ class YandexMapController
     module_invoke_all('yandex_map_presave', $entity);
 
     // Invoke hook_entity_presave().
-    module_invoke_all('entity_presave', '', $entity);
+    module_invoke_all('entity_presave', $entity, 'yandex_map');
     // The 'primary_keys' argument determines whether this will be an insert
     // or an update. So if the entity already has an ID, we'll specify
     // basic_id as the key.
@@ -161,7 +161,7 @@ class YandexMapController
       $invocation = 'entity_update';
     }
     // Invoke either hook_entity_update() or hook_entity_insert().
-    module_invoke_all($invocation, 'yandex_map', $entity);
+    module_invoke_all($invocation, $entity, 'yandex_map');
     return $entity;
   }
 
@@ -662,7 +662,7 @@ class YandexMapMarkerController
     module_invoke_all('yandex_map_marker_presave', $entity);
 
     // Invoke hook_entity_presave().
-    module_invoke_all('entity_presave', '', $entity);
+    module_invoke_all('entity_presave', $entity, 'yandex_map_marker');
     // The 'primary_keys' argument determines whether this will be an insert
     // or an update. So if the entity already has an ID, we'll specify
     // basic_id as the key.
@@ -686,7 +686,7 @@ class YandexMapMarkerController
       $invocation = 'entity_update';
     }
     // Invoke either hook_entity_update() or hook_entity_insert().
-    module_invoke_all($invocation, 'yandex_map_marker', $entity);
+    module_invoke_all($invocation, $entity, 'yandex_map_marker');
     return $entity;
   }
 
