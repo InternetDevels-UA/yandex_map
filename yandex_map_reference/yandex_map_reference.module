@@ -146,7 +146,9 @@ function yandex_map_reference_field_widget_info() {
       'label'       => t('Embedded Map'),
       'description' => t('Display Map on entity creation'),
       'field types' => array('yandex_map_reference'),
-      'settings'    => array(),
+      'settings'    => array(
+        'save_empty' => TRUE,
+      ),
     ),
   );
 }
@@ -168,24 +170,38 @@ function yandex_map_reference_field_widget_settings_form($field, $instance) {
   $settings = array_merge($defaults, $widget['settings']);
 
   $form = array();
-  if ($widget['type'] == 'yandex_map_reference_autocomplete') {
-    $form['autocomplete_match'] = array(
-      '#type'             => 'select',
-      '#title'            => t('Autocomplete matching'),
-      '#default_value'    => $settings['autocomplete_match'],
-      '#options'          => array(
-        'starts_with'     => t('Starts with'),
-        'contains'        => t('Contains'),
-      ),
-      '#description'      => t('Select the method used to collect autocomplete suggestions.'),
-    );
-    $form['size'] = array(
-      '#type'             => 'textfield',
-      '#title'            => t('Size of textfield'),
-      '#default_value'    => $settings['size'],
-      '#element_validate' => array('_element_validate_integer_positive'),
-      '#required'         => TRUE,
-    );
+  switch ($widget['type']) {
+    case 'yandex_map_reference_autocomplete':
+      $form['autocomplete_match'] = array(
+        '#type'             => 'select',
+        '#title'            => t('Autocomplete matching'),
+        '#default_value'    => $settings['autocomplete_match'],
+        '#options'          => array(
+          'starts_with'     => t('Starts with'),
+          'contains'        => t('Contains'),
+        ),
+        '#description'      => t('Select the method used to collect autocomplete suggestions.'),
+      );
+      $form['size'] = array(
+        '#type'             => 'textfield',
+        '#title'            => t('Size of textfield'),
+        '#default_value'    => $settings['size'],
+        '#element_validate' => array('_element_validate_integer_positive'),
+        '#required'         => TRUE,
+      );
+      berak;
+
+    case 'yandex_map_reference_embedded':
+      $form['save_empty'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Save maps without markers'),
+        '#default_value' => $settings['save_empty'],
+        '#description' => t('Allows to save empty maps without any geoobject.'),
+      );
+      $form_state = array();
+      yandex_map_settings_build_form($form, $form_state, 'admin');
+      break;
+
   }
   return $form;
 }
@@ -206,12 +222,12 @@ function yandex_map_reference_field_widget_form(&$form, &$form_state, $field, $i
         '#value_callback' => 'yandex_map_reference_autocomplete_value',
       );
       break;
-    
+
     case 'yandex_map_reference_embedded':
-      static $map_attached = FALSE;
-      if ($map_attached) {
-        return array();
-      }
+      // static $map_attached = FALSE;
+      // if ($map_attached) {
+      //   return array();
+      // }
       if (!empty($items[$delta]['mid'])) {
         if (is_numeric($items[$delta]['mid'])) {
           $map = yandex_map_load($items[$delta]['mid']);
@@ -225,7 +241,7 @@ function yandex_map_reference_field_widget_form(&$form, &$form_state, $field, $i
       }
       $element['mid']['map_preview'] = array(
         '#theme'       => 'yandex_map',
-        '#map_id'      => 'yandex_map_' . $map->mid,
+        '#map_id'      => 'yandex_map_' . $map->mid . '_' . $delta,
         '#mode'        => 'edit',
         '#elements'    => yandex_map_entity_to_geoobjects($map),
       );
@@ -243,6 +259,8 @@ function yandex_map_reference_field_widget_form(&$form, &$form_state, $field, $i
         '#attributes' => array(
           'id' => 'yandex_map_' . $map->mid . '_settings',
         ),
+        '#prefix' => '<div style="display:none">',
+        '#suffix' => '</div>',
       );
       $element['mid']['yandex_map'] = array(
         '#type'  => 'value',
@@ -250,7 +268,7 @@ function yandex_map_reference_field_widget_form(&$form, &$form_state, $field, $i
       );
       $map_attached = TRUE;
       break;
-    
+
   }
   return $element;
 }
@@ -260,9 +278,14 @@ function yandex_map_reference_field_widget_form(&$form, &$form_state, $field, $i
  * Implements hook_field_presave().
  */
 function yandex_map_reference_field_presave($entity_type, $entity, $field, $instance, $langcode, &$items) {
-  if ($instance['widget']['type'] == 'yandex_map_reference_embedded') {
+  $widget = $instance['widget'];
+  if ($widget['type'] == 'yandex_map_reference_embedded') {
     foreach ($items as $delta => $item) {
       $map = yandex_map_json_decode($item['mid']['settings'], $item['mid']['yandex_map']);
+      if (empty($widget['settings']['save_empty']) && empty($map->geoobjects)) {
+        $items[$delta]['mid'] = 0;
+        continue;
+      }
       $map->title = entity_label($entity_type, $entity);
       $map = yandex_map_save($map);
       $items[$delta]['mid'] = $map->mid;
@@ -401,7 +424,7 @@ function _yandex_map_reference_potential_references_default($field, $options) {
   $query = db_select('yandex_map', 'ym');
   $query->addField('ym', 'mid');
   $map_title_alias  = $query->addField('ym', 'title', 'map_title');
-  
+
   $query->addMetaData('id', ' _yandex_map_reference_potential_references_default')
     ->addMetaData('field', $field)
     ->addMetaData('options', $options);
@@ -580,13 +603,15 @@ function yandex_map_reference_options_list($field) {
   return $options;
 }
 
-
 /**
  * Implements hook_form_form_alter().
  * Very ugly way to forbid using multiple map fields in one entity.
+ * @todo - find better way, or avoid stdClass object to int conversion on
+ * refernce save when default value is used.
+ * Or remove this code when support of multiple maps on one page will be added.
  */
 function yandex_map_reference_form_alter(&$form, &$form_state, $form_id) {
- if ($form_id == 'field_ui_field_overview_form') {
+  if ($form_id == 'field_ui_field_overview_form') {
     $widgets = &drupal_static('field_ui_widget_type_options', array());
     list($entity_type, $bundle) = $form_state['build_info']['args'];
     $bundle = field_extract_bundle($entity_type, $bundle);
@@ -604,6 +629,7 @@ function yandex_map_reference_form_alter(&$form, &$form_state, $form_id) {
 
 /**
  * Implements hook_field_update_forbid().
+ * @todo remove when mulpile map per page support will be added.
  */
 function yandex_map_reference_field_update_forbid($field, $prior_field, $has_data) {
   if ($field['type'] == 'yandex_map_reference') {
