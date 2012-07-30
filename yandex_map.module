@@ -239,6 +239,21 @@ function yandex_map_permission() {
 
 
 /**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function yandex_map_form_views_ui_preview_form_alter(&$form, &$form_state, $form_id) {
+  $view            = $form_state['build_info']['args'][0];
+  $current_display = $view->current_display;
+  if (!empty($view->display[$current_display]->handler) && is_object($view->display[$current_display]->handler)) {
+    $plugin_name = $view->display[$current_display]->handler->get_option('style_plugin');
+    if ($plugin_name == 'yandex_map') {
+      yandex_map_init_api();
+    }
+  }
+}
+
+
+/**
  * Provides a list of existing yandex_map and the ability to add more. Tabs
  * provide field and display management.
  */
