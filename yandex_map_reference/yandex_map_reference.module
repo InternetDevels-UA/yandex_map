@@ -251,37 +251,13 @@ function yandex_map_reference_field_formatter_view($entity_type, $entity, $field
 }
 
 /**
- * Implements hook_form_form_alter().
- * Very ugly way to forbid using multiple map fields in one entity.
- * @todo - find better way, or avoid stdClass object to int conversion on
- * refernce save when default value is used.
- * Or remove this code when support of multiple maps on one page will be added.
- */
-function yandex_map_reference_form_alter(&$form, &$form_state, $form_id) {
-  if ($form_id == 'field_ui_field_overview_form') {
-    $widgets = &drupal_static('field_ui_widget_type_options', array());
-    list($entity_type, $bundle) = $form_state['build_info']['args'];
-    $bundle = field_extract_bundle($entity_type, $bundle);
-    $info = _field_info_collate_fields();
-    foreach ($info['fields'] as $field_info) {
-      if (isset($field_info['bundles'][$entity_type]) && in_array($bundle, $field_info['bundles'][$entity_type])) {
-        if ($field_info['type'] == 'yandex_map_reference') {
-          unset($widgets['yandex_map_reference']);
-          break;
-        }
-      }
-    }
-  }
-}
-
-/**
  * Implements hook_field_update_forbid().
  * @todo remove when mulpile map per page support will be added.
  */
 function yandex_map_reference_field_update_forbid($field, $prior_field, $has_data) {
   if ($field['type'] == 'yandex_map_reference') {
-    if ($field['cardinality'] != 1) {
-      throw new FieldUpdateForbiddenException("Cannot update a Yandex map field with cardinality not equal to one");
+    if ($field['cardinality'] == -1) {
+      throw new FieldUpdateForbiddenException("Cannot update a Yandex map field with cardinality -1");
     }
   }
 }
