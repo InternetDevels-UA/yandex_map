@@ -459,48 +459,7 @@ function yandex_map_add() {
  *   for fields attached to the entity.
  */
 function yandex_map_form($form, &$form_state, $entity) {
-  $form['title'] = array(
-    '#type'          => 'textfield',
-    '#title'         => t('Title'),
-    '#required'      => TRUE,
-    '#default_value' => $entity->title,
-  );
-
-  $form['block'] = array(
-    '#type'          => 'checkbox',
-    '#title'         => t('Create block for this map'),
-    '#default_value' => $entity->block,
-  );
-
-  $form['map_preview'] = array(
-    '#theme'       => 'yandex_map',
-
-    '#map_id'      => 'edit_' . $entity->mid,
-    '#mode'        => 'edit',
-    '#elements'    => yandex_map_entity_to_geoobjects($entity),
-  );
-  if (!empty($entity->type)) {
-    $form['map_preview']['#type'] = $entity->type;
-  }
-  if (!empty($entity->zoom)) {
-    $form['map_preview']['#zoom'] = $entity->zoom;
-  }
-  if (!empty($entity->center)) {
-    $form['map_preview']['#center'] = $entity->center;
-  }
-
-  $form['settings'] = array(
-    '#type'       => 'textarea',
-    '#attributes' => array(
-      'id' => 'yandex_map_' . $entity->mid . '_settings',
-    ),
-    '#prefix' => '<div style="display:none">',
-    '#suffix' => '</div>',
-  );
-  $form['yandex_map'] = array(
-    '#type'  => 'value',
-    '#value' => $entity,
-  );
+  $form = _yandex_map_form($entity);
 
   field_attach_form('yandex_map', $entity, $form, $form_state);
 
@@ -517,6 +476,53 @@ function yandex_map_form($form, &$form_state, $entity) {
       '#weight' => 200,
     );
   }
+  return $form;
+}
+
+/**
+ * Helper function for map form building.
+ */
+function _yandex_map_form($map, $type = 'edit') {
+  $form['title'] = array(
+    '#type'          => 'textfield',
+    '#title'         => t('Title'),
+    '#required'      => TRUE,
+    '#default_value' => $map->title,
+  );
+
+  $form['block'] = array(
+    '#type'          => 'checkbox',
+    '#title'         => t('Create block for this map'),
+    '#default_value' => $map->block,
+  );
+
+  $form['map_preview'] = array(
+    '#theme'       => 'yandex_map',
+    '#map_id'      => $type . '_' . $map->mid,
+    '#mode'        => 'edit',
+    '#elements'    => yandex_map_entity_to_geoobjects($map),
+  );
+  if (!empty($map->type)) {
+    $form['map_preview']['#type'] = $map->type;
+  }
+  if (!empty($map->zoom)) {
+    $form['map_preview']['#zoom'] = $map->zoom;
+  }
+  if (!empty($map->center)) {
+    $form['map_preview']['#center'] = $map->center;
+  }
+
+  $form['settings'] = array(
+    '#type'       => 'textarea',
+    '#attributes' => array(
+      'id'    => 'yandex_map_' . $map->mid . '_settings',
+      // 'style' => array('display:none;'),
+    ),
+  );
+  $form['yandex_map'] = array(
+    '#type'  => 'value',
+    '#value' => $map,
+  );
   return $form;
 }
 

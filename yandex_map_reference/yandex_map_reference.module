@@ -5,28 +5,6 @@
  * Provides referencable fields for other entities
  */
 
-
-/**
- * Implements hook_menu().
- */
-function yandex_map_reference_menu() {
-  $items['yandex_map_reference/autocomplete/%/%/%'] = array(
-    'page callback' => 'yandex_map_reference_autocomplete',
-    'page arguments' => array(2, 3, 4),
-    'access callback' => 'yandex_map_reference_autocomplete_access',
-    'access arguments' => array(2, 3, 4),
-    'type' => MENU_CALLBACK,
-  );
-  return $items;
-}
-
-/**
- * Access callback.
- */
-function yandex_map_reference_autocomplete_access($entity_type, $bundle, $field_name) {
-  return TRUE;
-}
-
 /**
  * Implements hook_field_info().
  */
@@ -42,7 +20,7 @@ function yandex_map_reference_field_info() {
           'args' => array(),
         ),
       ),
-      'default_widget'    => 'options_select',
+      'default_widget'    => 'yandex_map_reference_embedded',
       'default_formatter' => 'yandex_map_reference_map',
     ),
   );
@@ -89,42 +67,6 @@ function yandex_map_reference_field_validate($entity_type, $entity, $field, $ins
   if ($instance['widget']['type'] == 'yandex_map_reference_embedded') {
     return;
   }
-  // Extract mids to check.
-  $ids = array();
-
-  // First check non-numeric "mid's to avoid losing time with them.
-  foreach ($items as $delta => $item) {
-    if (is_array($item) && !empty($item['mid'])) {
-      if (is_numeric($item['mid'])) {
-        $ids[] = $item['mid'];
-      }
-      else {
-        $errors[$field['field_name']][$langcode][$delta][] = array(
-          'error' => 'invalid_mid',
-          'message' => t("%name: invalid input.",
-            array('%name' => $instance['label'])),
-        );
-      }
-    }
-  }
-  // Prevent performance hog if there are no ids to check.
-  if ($ids) {
-    $options = array(
-      'ids' => $ids,
-    );
-    $refs = yandex_map_reference_potential_references($field, $options);
-    foreach ($items as $delta => $item) {
-      if (is_array($item)) {
-        if (!empty($item['mid']) && !isset($refs[$item['mid']])) {
-          $errors[$field['field_name']][$langcode][$delta][] = array(
-            'error' => 'invalid_mid',
-            'message' => t("%name: this map can't be referenced.",
-              array('%name' => $instance['label'])),
-          );
-        }
-      }
-    }
-  }
 }
 
 /**
@@ -132,16 +74,6 @@ function yandex_map_reference_field_validate($entity_type, $entity, $field, $ins
  */
 function yandex_map_reference_field_widget_info() {
   return array(
-    'yandex_map_reference_autocomplete' => array(
-      'label'       => t('Autocomplete text field'),
-      'description' => t('Display the list of referenceable maps as a textfield with autocomplete behaviour.'),
-      'field types' => array('yandex_map_reference'),
-      'settings'    => array(
-        'autocomplete_match' => 'contains',
-        'size' => 60,
-        'autocomplete_path' => 'yandex_map_reference/autocomplete',
-      ),
-    ),
     'yandex_map_reference_embedded' => array(
       'label'       => t('Embedded Map'),
       'description' => t('Display Map on entity creation'),
@@ -154,14 +86,6 @@ function yandex_map_reference_field_widget_info() {
 }
 
 /**
- * Implements hook_field_widget_info_alter().
- */
-function yandex_map_reference_field_widget_info_alter(&$info) {
-  $info['options_select']['field types'][]  = 'yandex_map_reference';
-  $info['options_buttons']['field types'][] = 'yandex_map_reference';
-}
-
-/**
  * Implements hook_field_widget_settings_form().
  */
 function yandex_map_reference_field_widget_settings_form($field, $instance) {
@@ -171,26 +95,6 @@ function yandex_map_reference_field_widget_settings_form($field, $instance) {
 
   $form = array();
   switch ($widget['type']) {
-    case 'yandex_map_reference_autocomplete':
-      $form['autocomplete_match'] = array(
-        '#type'             => 'select',
-        '#title'            => t('Autocomplete matching'),
-        '#default_value'    => $settings['autocomplete_match'],
-        '#options'          => array(
-          'starts_with'     => t('Starts with'),
-          'contains'        => t('Contains'),
-        ),
-        '#description'      => t('Select the method used to collect autocomplete suggestions.'),
-      );
-      $form['size'] = array(
-        '#type'             => 'textfield',
-        '#title'            => t('Size of textfield'),
-        '#default_value'    => $settings['size'],
-        '#element_validate' => array('_element_validate_integer_positive'),
-        '#required'         => TRUE,
-      );
-      berak;
-
     case 'yandex_map_reference_embedded':
       $form['save_empty'] = array(
         '#type' => 'checkbox',
@@ -198,8 +102,6 @@ function yandex_map_reference_field_widget_settings_form($field, $instance) {
         '#default_value' => $settings['save_empty'],
         '#description' => t('Allows to save empty maps without any geoobject.'),
       );
-      $form_state = array();
-      yandex_map_settings_build_form($form, $form_state, 'admin');
       break;
 
   }
@@ -211,23 +113,7 @@ function yandex_map_reference_field_widget_settings_form($field, $instance) {
  */
 function yandex_map_reference_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
   switch ($instance['widget']['type']) {
-    case 'yandex_map_reference_autocomplete':
-      $key = 'mid';
-      $element += array(
-        '#type' => 'textfield',
-        '#default_value' => isset($items[$delta]['mid']) ? $items[$delta]['mid'] : NULL,
-        '#autocomplete_path' => $instance['widget']['settings']['autocomplete_path'] . '/' . $instance['entity_type'] . '/' . $instance['bundle'] . '/' . $field['field_name'],
-        '#size' => $instance['widget']['settings']['size'],
-        '#element_validate' => array('yandex_map_reference_autocomplete_validate'),
-        '#value_callback' => 'yandex_map_reference_autocomplete_value',
-      );
-      break;
-
     case 'yandex_map_reference_embedded':
-      // static $map_attached = FALSE;
-      // if ($map_attached) {
-      //   return array();
-      // }
       if (!empty($items[$delta]['mid'])) {
         if (is_numeric($items[$delta]['mid'])) {
           $map = yandex_map_load($items[$delta]['mid']);
@@ -239,34 +125,9 @@ function yandex_map_reference_field_widget_form(&$form, &$form_state, $field, $i
       else {
         $map = entity_get_controller('yandex_map')->create();
       }
-      $element['mid']['map_preview'] = array(
-        '#theme'       => 'yandex_map',
-        '#map_id'      => 'referenced' . $map->mid . '_' . $delta,
-        '#mode'        => 'edit',
-        '#elements'    => yandex_map_entity_to_geoobjects($map),
-      );
-      if (!empty($map->type)) {
-        $element['mid']['map_preview']['#type'] = $map->type;
-      }
-      if (!empty($map->zoom)) {
-        $element['mid']['map_preview']['#zoom'] = $map->zoom;
-      }
-      if (!empty($map->center)) {
-        $element['mid']['map_preview']['#center'] = $map->center;
-      }
-      $element['mid']['settings'] = array(
-        '#type'       => 'textarea',
-        '#attributes' => array(
-          'id' => 'yandex_map_' . $map->mid . '_settings',
-        ),
-        '#prefix' => '<div style="display:none">',
-        '#suffix' => '</div>',
-      );
-      $element['mid']['yandex_map'] = array(
-        '#type'  => 'value',
-        '#value' => $map,
-      );
-      $map_attached = TRUE;
+      $element['mid'] = _yandex_map_form($map, 'reference');
+      $element['mid']['title']['#access'] = FALSE;
+      $element['mid']['block']['#access'] = FALSE;
       break;
 
   }
@@ -294,217 +155,15 @@ function yandex_map_reference_field_presave($entity_type, $entity, $field, $inst
 }
 
 /**
- * Value callback for a yandex_map_reference autocomplete element.
- *
- * Replace the map mid with a map title.
- */
-function yandex_map_reference_autocomplete_value($element, $input = FALSE, $form_state) {
-  if ($input === FALSE) {
-    // We're building the displayed 'default value': expand the raw mid into
-    // "map title [mid:m]".
-    $mid = $element['#default_value'];
-    if (!empty($mid)) {
-      $q = db_select('yandex_map', 'ym');
-      $q->addField('ym', 'title');
-      $q->condition('ym.mid', $mid)
-        ->range(0, 1);
-      $result = $q->execute();
-      $value = $result->fetchField();
-      $value .= ' [mid:' . $mid . ']';
-      return $value;
-    }
-  }
-}
-
-/**
- * Validation callback for a yandex_map_reference autocomplete element.
- */
-function yandex_map_reference_autocomplete_validate($element, &$form_state, $form) {
-  $field    = field_widget_field($element, $form_state);
-  $instance = field_widget_instance($element, $form_state);
-
-  $value = $element['#value'];
-  $mid = NULL;
-
-  if (!empty($value)) {
-    // Check whether we have an explicit "[mid:m]" input.
-    preg_match('/^(?:\s*|(.*) )?\[\s*mid\s*:\s*(\d+)\s*\]$/', $value, $matches);
-    if (!empty($matches)) {
-      // Explicit mid. Check that the 'title' part matches the actual title for
-      // the mid.
-      list(, $title, $mid) = $matches;
-      if (!empty($title)) {
-        $real_title = db_select('yandex_map', 'ym')
-          ->fields('ym', array('title'))
-          ->condition('ym.mid', $mid)
-          ->execute()
-          ->fetchField();
-        if (trim($title) != trim($real_title)) {
-          form_error($element, t('%name: title mismatch. Please check your selection.', array('%name' => $instance['label'])));
-        }
-      }
-    }
-    else {
-      // No explicit mid (the submitted value was not populated by autocomplete
-      // selection). Get the mid of a referencable map from the entered title.
-      $options = array(
-        'string' => $value,
-        'match' => 'equals',
-        'limit' => 1,
-      );
-      $references = yandex_map_reference_potential_references($field, $options);
-      if ($references) {
-        // matching candidate...
-        $mid = key($references);
-      }
-      else {
-        form_error($element, t('%name: found no valid map with that title.', array('%name' => $instance['label'])));
-      }
-    }
-  }
-
-  // Set the element's value as the map id that was extracted from the entered
-  // input.
-  form_set_value($element, $mid, $form_state);
-}
-
-/**
- * Retrieves an array of candidate referenceable maps.
- *
- * @param $field
- *   The field definition.
- * @param $options
- *   An array of options to limit the scope of the returned list. The following
- *   key/value pairs are accepted:
- *   - string: string to filter titles on (used by autocomplete).
- *   - match: operator to match the above string against, can be any of:
- *     'contains', 'equals', 'starts_with'. Defaults to 'contains'.
- *   - ids: array of specific map ids to lookup.
- *   - limit: maximum size of the the result set. Defaults to 0 (no limit).
- *
- * @return
- *   An array of valid maps in the form:
- *   array(
- *     mid => array(
- *       'title' => The map title,
- *       'rendered' => The text to display in widgets (can be HTML)
- *     ),
- *     ...
- *   )
- */
-function yandex_map_reference_potential_references($field, $options = array()) {
-  // Fill in default options.
-  $options += array(
-    'string' => '',
-    'match' => 'contains',
-    'ids' => array(),
-    'limit' => 0,
-  );
-
-  $results = &drupal_static(__FUNCTION__, array());
-
-  // Create unique id for static cache.
-  $cid = $field['field_name'] . ':' . $options['match'] . ':'
-    . ($options['string'] !== '' ? $options['string'] : implode('-', $options['ids']))
-    . ':' . $options['limit'];
-  if (!isset($results[$cid])) {
-    $references = _yandex_map_reference_potential_references_default($field, $options);
-    // Store the results.
-    $results[$cid] = !empty($references) ? $references : array();
-  }
-  return $results[$cid];
-}
-
-/**
- * Helper function for yandex_map_reference_potential_references().
- *
- * List of referenceable maps.
- */
-function _yandex_map_reference_potential_references_default($field, $options) {
-  $query = db_select('yandex_map', 'ym');
-  $query->addField('ym', 'mid');
-  $map_title_alias  = $query->addField('ym', 'title', 'map_title');
-
-  $query->addMetaData('id', ' _yandex_map_reference_potential_references_default')
-    ->addMetaData('field', $field)
-    ->addMetaData('options', $options);
-
-  if ($options['string'] !== '') {
-    switch ($options['match']) {
-      case 'contains':
-        $query->condition('ym.title', '%' . $options['string'] . '%', 'LIKE');
-        break;
-
-      case 'starts_with':
-        $query->condition('ym.title', $options['string'] . '%', 'LIKE');
-        break;
-
-      case 'equals':
-      default: // no match type or incorrect match type: use "="
-        $query->condition('ym.title', $options['string']);
-        break;
-    }
-  }
-
-  if ($options['ids']) {
-    $query->condition('ym.mid', $options['ids'], 'IN');
-  }
-
-  if ($options['limit']) {
-    $query->range(0, $options['limit']);
-  }
-
-  $query
-    ->orderBy($map_title_alias);
-
-  $result = $query->execute()->fetchAll();
-  $references = array();
-  foreach ($result as $map) {
-    $references[$map->mid] = array(
-      'title'    => $map->map_title,
-      'rendered' => check_plain($map->map_title),
-    );
-  }
-  return $references;
-}
-
-/**
- * Menu callback for the autocomplete results.
- */
-function yandex_map_reference_autocomplete($entity_type, $bundle, $field_name, $string = '') {
-  $field = field_info_field($field_name);
-  $instance = field_info_instance($entity_type, $field_name, $bundle);
-
-  $options = array(
-    'string' => $string,
-    'match' => $instance['widget']['settings']['autocomplete_match'],
-    'limit' => 10,
-  );
-  $references = yandex_map_reference_potential_references($field, $options);
-
-  $matches = array();
-  foreach ($references as $id => $row) {
-    // Markup is fine in autocompletion results (might happen when rendered
-    // through Views) but we want to remove hyperlinks.
-    $suggestion = preg_replace('/<a href="([^<]*)">([^<]*)<\/a>/', '$2', $row['rendered']);
-    $matches[$row['title'] . " [mid:$id]"] = '<div class="yandex-map-autocomplete">' . $suggestion . '</div>';
-  }
-
-  drupal_json_output($matches);
-}
-
-
-
-/**
  * Implements hook_field_formatter_info().
  */
 function yandex_map_reference_field_formatter_info() {
   return array(
     'yandex_map_reference_map' => array(
-      'label' => t('Yandex Map'),
+      'label'       => t('Yandex Map'),
       'description' => t('Display the referenced map.'),
       'field types' => array('yandex_map_reference'),
-      'settings' => array('yandex_map_reference_view_mode' => 'default'),
+      'settings'    => array('yandex_map_reference_view_mode' => 'default'),
     ),
   );
 }
@@ -572,35 +231,23 @@ function yandex_map_reference_field_formatter_view($entity_type, $entity, $field
       }
       foreach ($items as $delta => $item) {
         if (!empty($item['mid'])) {
-          $result[$delta] = yandex_map_view(yandex_map_load($item['mid']), $settings['yandex_map_reference_view_mode']);
+          if (is_numeric($item['mid'])) {
+            $map = yandex_map_load($item['mid']);
+          }
+          // We have full map object on node preview.
+          elseif (is_array($item['mid']) && !empty($item['mid']['yandex_map']->mid)) {
+            $map = $item['mid']['yandex_map'];
+          }
+          else {
+            $map = entity_get_controller('yandex_map')->create();
+          }
+          $result[$delta] = yandex_map_view($map, $settings['yandex_map_reference_view_mode']);
         }
       }
       break;
 
   }
   return $result;
-}
-
-/**
- * Implements hook_options_list().
- */
-function yandex_map_reference_options_list($field) {
-  $references = yandex_map_reference_potential_references($field);
-
-  $options = array();
-  foreach ($references as $key => $value) {
-    if (empty($value['group'])) {
-      $options[$key] = $value['rendered'];
-    }
-    else {
-      // The group name, displayed in selects, cannot contain tags, and should
-      // have HTML entities unencoded.
-      $group = html_entity_decode(strip_tags($value['group']), ENT_QUOTES);
-      $options[$group][$key] = $value['rendered'];
-    }
-  }
-
-  return $options;
 }
 
 /**
