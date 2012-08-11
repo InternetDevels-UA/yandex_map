@@ -84,9 +84,29 @@ function template_preprocess_views_yandex_map(&$vars) {
   // Views Yandex map style plugin options.
   $views_controls       = array();
   $views_extra_controls = array();
-  if (!empty($vars['options'])) {
+  if (!empty($vars['options']['default_map'])) {
     $views_controls       = $vars['options']['default_map']['controls'];
     $views_extra_controls = $vars['options']['default_map']['extra_controls'];
+  }
+  else {
+    $default_map = yandex_map_default_map();
+    foreach ($default_map as $key => $data) {
+      if ($key == 'controls' && is_array($data) && !empty($data)) {
+        foreach ($data as $id => $control) {
+          if (isset($control['enable'])) {
+            $views_controls["yandex_map_controls_{$id}"] = $control['enable'];
+          }
+          else {
+            $views_controls["yandex_map_controls_{$id}"] = FALSE;
+          }
+        }
+      }
+    }
+    $views_extra_controls['yandex_map_default_type']     = $default_map['type'];
+    $views_extra_controls['yandex_map_default_height']   = $default_map['height'];
+    $views_extra_controls['yandex_map_default_width']    = $default_map['width'];
+    $views_extra_controls['yandex_map_default_behavior'] = $default_map['behaviors'];
+    $views_extra_controls['yandex_map_enabled_map_types'] = $default_map['types'];
   }
 
   // Configure map controls.

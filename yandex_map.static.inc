@@ -117,7 +117,7 @@ function yandex_map_default_map() {
   }
 
   // Configure map behaviors.
-  $settings['behaviors'] = _yandex_map_setting_get('behaviors');
+  $settings['behaviors'] = _yandex_map_setting_get('behavior');
 
   // Configure allowed map types.
   $settings['types'] = _yandex_map_setting_get('types');

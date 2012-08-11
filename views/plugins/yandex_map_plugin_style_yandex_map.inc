@@ -36,7 +36,7 @@ class yandex_map_plugin_style_yandex_map extends views_plugin_style {
 
   function validate() {
     $errors = parent::validate();
-    if ($this->uses_fields()) {
+    if ($this->uses_fields() && $this->view->vid != 'new') {
       $fields = TRUE;
       $field_handlers = $this->view->display_handler->get_handlers('field');
       foreach ($field_handlers as $key => $field) {
@@ -45,12 +45,12 @@ class yandex_map_plugin_style_yandex_map extends views_plugin_style {
           break;
         }
       }
-    }
-    if ($fields) {
-      $errors[] = t(
-        "Style '@style' requires a '@field'.",
-        array('@style' => $this->definition['title'], '@field' => 'Yandex map: Geoobjects')
-      );
+      if ($fields) {
+        $errors[] = t(
+          "Style '@style' requires a '@field'.",
+          array('@style' => $this->definition['title'], '@field' => 'Yandex map: Geoobjects')
+        );
+      }
     }
 
     return $errors;

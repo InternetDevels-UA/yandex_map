@@ -277,6 +277,7 @@ function yandex_map_settings_build_form(&$form, &$form_state, $type, $options = 
         }
       }
       $input = 'style_options[default_map][controls][yandex_map_controls_typeSelector]';
+      unset($form['default_map']['controls']['yandex_map_controls_editTools']);
       break;
 
     default:
