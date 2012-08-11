@@ -107,7 +107,7 @@ function template_preprocess_views_yandex_map(&$vars) {
 
   // Configure map size.
   if ($views_extra_controls['yandex_map_default_height']) {
-    $vars['map']['height'] =$views_extra_controls['yandex_map_default_height'];
+    $vars['map']['height'] = $views_extra_controls['yandex_map_default_height'];
     if (is_numeric($vars['map']['height'])) {
       $vars['map']['height'] .= 'px';
     }

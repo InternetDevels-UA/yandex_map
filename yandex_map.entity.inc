@@ -496,7 +496,7 @@ function _yandex_map_form($map, $type = 'edit') {
     '#default_value' => $map->block,
   );
 
-  $map_id = yandex_map_new_id('edit_' . $entity->mid);
+  $map_id = yandex_map_new_id('edit_' . $map->mid);
   $form['map_preview'] = array(
     '#theme'       => 'yandex_map',
     '#map_id'      => $map_id,
@@ -517,7 +517,7 @@ function _yandex_map_form($map, $type = 'edit') {
     '#type'       => 'textarea',
     '#attributes' => array(
       'id'    => $map_id . '_settings',
-      // 'style' => array('display:none;'),
+      'style' => array('display:none;'),
     ),
   );
   $form['yandex_map'] = array(
