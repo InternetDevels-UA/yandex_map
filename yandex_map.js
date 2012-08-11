@@ -64,14 +64,28 @@ Drupal.yandex_maps.maps = Drupal.yandex_maps.maps || {};
   }
 })(jQuery);
 
-ymaps.ready(function(){
-  if (Drupal.settings.yandex_map.maps) {
-    jQuery.each(Drupal.settings.yandex_map.maps, function(id, settings) {
-      // Create map and save object to Drupal storage.
-      Drupal.yandex_maps.maps[id] = yandex_map(settings);
+/**
+ * Core behavior for Administration menu.
+ */
+
+Drupal.behaviors.yandex_maps = {
+  attach: function (context, settings) {
+    ymaps.ready(function(){
+      if (Drupal.settings.yandex_map.maps) {
+        jQuery.each(Drupal.settings.yandex_map.maps, function(id, settings) {
+          if (jQuery('#' + settings.map_id).length) {
+            // Create map and save object to Drupal storage.
+            if (Drupal.yandex_maps.maps[id]) {
+              Drupal.yandex_maps.maps[id].object.destroy();
+              Drupal.yandex_maps.maps[id].object = null;
+            }
+            Drupal.yandex_maps.maps[id] = yandex_map(settings);
+          }
+        });
+      }
     });
   }
-});
+}
 
 function yandex_map(settings) {
   var map = {};
