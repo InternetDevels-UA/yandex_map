@@ -409,11 +409,11 @@ function yandex_map_title($entity) {
 function yandex_map_view($entity, $view_mode = 'basic') {
   module_invoke_all('yandex_map_view', $entity);
   yandex_map_build_content($entity, $view_mode);
-  
+
   $build = array(
     '#theme'       => 'yandex_map',
 
-    '#map_id'      => 'yandex_map_' . $entity->mid,
+    '#map_id'      => 'view_' . $entity->mid,
     '#mode'        => 'view',
     '#elements'    => yandex_map_entity_to_geoobjects($entity),
 
@@ -475,7 +475,7 @@ function yandex_map_form($form, &$form_state, $entity) {
   $form['map_preview'] = array(
     '#theme'       => 'yandex_map',
 
-    '#map_id'      => 'yandex_map_' . $entity->mid,
+    '#map_id'      => 'edit_' . $entity->mid,
     '#mode'        => 'edit',
     '#elements'    => yandex_map_entity_to_geoobjects($entity),
   );

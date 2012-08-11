@@ -70,7 +70,7 @@ function yandex_map_default_map() {
 
   // Base settings.
   $settings = array(
-    'map_id'   => 'yandex_map_' . $map_id,
+    'map_id'   => 'yandex_map_' . $map_id . '_',
     'width'    => '100%',
     'height'   => '300px',
     'center'   => '',

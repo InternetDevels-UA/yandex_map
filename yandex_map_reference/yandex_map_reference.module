@@ -241,7 +241,7 @@ function yandex_map_reference_field_widget_form(&$form, &$form_state, $field, $i
       }
       $element['mid']['map_preview'] = array(
         '#theme'       => 'yandex_map',
-        '#map_id'      => 'yandex_map_' . $map->mid . '_' . $delta,
+        '#map_id'      => 'referenced' . $map->mid . '_' . $delta,
         '#mode'        => 'edit',
         '#elements'    => yandex_map_entity_to_geoobjects($map),
       );
