@@ -128,6 +128,7 @@ function yandex_map(settings) {
     map.object.destroy();
     map.object = null;
     yandex_map(Drupal.settings.yandex_map.maps[map.id]);
+    Drupal.attachBehaviors();
   }
 
   // Create map.

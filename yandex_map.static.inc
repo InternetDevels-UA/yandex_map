@@ -147,7 +147,7 @@ function _yandex_map_setting_get($key) {
       return variable_get('yandex_map_default_center', YANDEX_MAP_DEFAULT_CENTER);
 
     case 'behavior':
-      return variable_get('yandex_map_defalut_behavior', drupal_map_assoc(array('drag', 'scrollZoom', 'dblClickZoom')));
+      return variable_get('yandex_map_default_behavior', drupal_map_assoc(array('drag', 'scrollZoom', 'dblClickZoom')));
 
     case 'mapTools':
       return variable_get('yandex_map_mapTools', drupal_map_assoc(array_keys(yandex_map_map_tools())));
