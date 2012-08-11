@@ -249,15 +249,3 @@ function yandex_map_reference_field_formatter_view($entity_type, $entity, $field
   }
   return $result;
 }
-
-/**
- * Implements hook_field_update_forbid().
- * @todo remove when mulpile map per page support will be added.
- */
-function yandex_map_reference_field_update_forbid($field, $prior_field, $has_data) {
-  if ($field['type'] == 'yandex_map_reference') {
-    if ($field['cardinality'] == -1) {
-      throw new FieldUpdateForbiddenException("Cannot update a Yandex map field with cardinality -1");
-    }
-  }
-}
