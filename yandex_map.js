@@ -74,7 +74,7 @@ ymaps.ready(function(){
 });
 
 function yandex_map(settings) {
-  var map = this;
+  var map = {};
 
   // Prepare defaults.
   map.colors = {
@@ -276,7 +276,7 @@ function yandex_map(settings) {
         </tbody>\
       </table>';
     wrapper.append(edit_color)
-    jQuery.each(colors, function(code, data) {
+    jQuery.each(map.colors, function(code, data) {
       wrapper.find("table.color table tr").append(
         '<td><div class="check ' + (color == code ? 'current' : '') + '" onclick="Drupal.yandex_maps.actions.check(this)"><span alt="' + code + '" style="background-color: ' + data.hex + ';" title="' + Drupal.t(data.title) + '"></span></div></td>'
       );
@@ -522,8 +522,8 @@ function yandex_map(settings) {
     }
   });
 
-  this.object.map = map;
-  return this;
+  map.object.map = map;
+  return map;
 }
 
 Drupal.yandex_maps.actions = Drupal.yandex_maps.actions || {};

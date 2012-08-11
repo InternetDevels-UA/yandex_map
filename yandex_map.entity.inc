@@ -413,7 +413,7 @@ function yandex_map_view($entity, $view_mode = 'basic') {
   $build = array(
     '#theme'       => 'yandex_map',
 
-    '#map_id'      => 'view_' . $entity->mid,
+    '#map_id'      => yandex_map_new_id('view_' . $entity->mid),
     '#mode'        => 'view',
     '#elements'    => yandex_map_entity_to_geoobjects($entity),
 
@@ -496,9 +496,10 @@ function _yandex_map_form($map, $type = 'edit') {
     '#default_value' => $map->block,
   );
 
+  $map_id = yandex_map_new_id('edit_' . $entity->mid);
   $form['map_preview'] = array(
     '#theme'       => 'yandex_map',
-    '#map_id'      => $type . '_' . $map->mid,
+    '#map_id'      => $map_id,
     '#mode'        => 'edit',
     '#elements'    => yandex_map_entity_to_geoobjects($map),
   );
@@ -515,7 +516,7 @@ function _yandex_map_form($map, $type = 'edit') {
   $form['settings'] = array(
     '#type'       => 'textarea',
     '#attributes' => array(
-      'id'    => 'yandex_map_' . $map->mid . '_settings',
+      'id'    => $map_id . '_settings',
       // 'style' => array('display:none;'),
     ),
   );

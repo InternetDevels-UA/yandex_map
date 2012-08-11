@@ -14,7 +14,7 @@ function template_preprocess_yandex_map(&$vars) {
   $vars['map'] = yandex_map_default_map();
 
   if (isset($vars['map_id'])) {
-    $vars['map']['map_id'] = $vars['map']['map_id'] . $vars['map_id'];
+    $vars['map']['map_id'] = $vars['map_id'];
   }
 
   // Setup map mode.

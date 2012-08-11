@@ -63,14 +63,25 @@ function yandex_map_controls() {
 }
 
 /**
+ * Get map id.
+ */
+function yandex_map_new_id($val = '') {
+  static $map_id = 0;
+  $map_id++;
+  $key = 'yandex_map_' . $map_id;
+  if (!empty($val)) {
+    $key .= '_' . $val;
+  }
+  return $key;
+}
+
+/**
  * Prepare default values for map.
  */
 function yandex_map_default_map() {
-  static $map_id = 0;
-
   // Base settings.
   $settings = array(
-    'map_id'   => 'yandex_map_' . $map_id . '_',
+    'map_id'   => yandex_map_new_id(),
     'width'    => '100%',
     'height'   => '300px',
     'center'   => '',
@@ -78,7 +89,6 @@ function yandex_map_default_map() {
     'type'     => 'map',
     'controls' => array(),
   );
-  $map_id++;
 
   // Configure map controls.
   $controls = yandex_map_controls();
