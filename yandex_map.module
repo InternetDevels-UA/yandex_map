@@ -82,7 +82,7 @@ function yandex_map_views_api() {
  * Implements hook_menu()
  */
 function yandex_map_menu() {
-  $items['admin/config/services/yandex'] = array(
+  $items['admin/structure/yandex'] = array(
     'title' => 'Yandex Map',
     'description' => 'Administration Yandex Map.',
     'page callback' => 'system_admin_menu_block_page',
@@ -90,14 +90,7 @@ function yandex_map_menu() {
     'file' => 'system.admin.inc',
     'file path' => drupal_get_path('module', 'system'),
   );
-  $items['admin/config/services/yandex/delete'] = array(
-    'title'            => 'Multiple delete',
-    'page callback'    => 'drupal_get_form',
-    'page arguments'   => array('yandex_map_multiple_confirm_delete'),
-    'access arguments' => array('administer yandex_map'),
-    'type'             => MENU_SUGGESTED_ITEM,
-  );
-  $items['admin/config/services/yandex/admin'] = array(
+  $items['admin/structure/yandex/admin'] = array(
     'title'            => 'Settings',
     'description'      => 'Configure Yandex Map settings',
     'page callback'    => 'drupal_get_form',
@@ -106,28 +99,28 @@ function yandex_map_menu() {
     'access arguments' => array('administer yandex_map'),
     'type'             => MENU_NORMAL_ITEM,
   );
-  $items['admin/config/services/yandex/yandex-map'] = array(
+  $items['admin/structure/yandex/yandex-map'] = array(
     'title'            => 'Maps',
     'description'      => 'Manage maps',
     'page callback'    => 'drupal_get_form',
     'page arguments'   => array('yandex_map_list_page'),
     'access arguments' => array('administer yandex_map'),
   );
-  $items['admin/config/services/yandex/yandex-map-marker'] = array(
+  $items['admin/structure/yandex/yandex-map-marker'] = array(
     'title'            => 'Markers',
     'description'      => 'Manage markers',
     'page callback'    => 'drupal_get_form',
     'page arguments'   => array('yandex_map_list_page', 'yandex_map_marker'),
     'access arguments' => array('administer yandex_map'),
   );
-  $items['admin/config/services/yandex/yandex-map/create'] = array(
+  $items['admin/structure/yandex/yandex-map/create'] = array(
     'title'            => 'Add map',
     'description'      => 'Create new map',
     'page callback'    => 'yandex_map_add',
     'access arguments' => array('create yandex_map entities'),
     'type'             => MENU_LOCAL_ACTION,
   );
-  $items['admin/config/services/yandex/yandex-map-marker/create'] = array(
+  $items['admin/structure/yandex/yandex-map-marker/create'] = array(
     'title'            => 'Add marker',
     'description'      => 'Create new marker',
     'page callback'    => 'yandex_map_marker_add',
@@ -243,15 +236,17 @@ function yandex_map_permission() {
  */
 function yandex_map_form_views_ui_preview_form_alter(&$form, &$form_state, $form_id) {
   $view            = $form_state['build_info']['args'][0];
-  $current_display = $view->current_display;
-  if (!empty($view->display[$current_display]->handler) && is_object($view->display[$current_display]->handler)) {
-    $plugin_name = $view->display[$current_display]->handler->get_option('style_plugin');
-    if ($plugin_name == 'yandex_map') {
-      yandex_map_init_api();
-    }
+  $current_display = $form_state['build_info']['args'][1];
+  if (!empty($view->display[$current_display]->display_options['style_plugin'])) {
+    $plugin_name = $view->display[$current_display]->display_options['style_plugin'];
+  }
+  else {
+    $plugin_name = $view->display['default']->display_options['style_plugin'];
+  }
+  if ($plugin_name == 'yandex_map') {
+    yandex_map_init_api();
   }
 }
-
 
 /**
  * Provides a list of existing yandex_map and the ability to add more. Tabs

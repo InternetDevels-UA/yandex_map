@@ -183,25 +183,20 @@ class YandexMapController
    * @param $mids
    *   An array of entity IDs or a single numeric ID.
    */
-  public function delete_multiple($entities) {
-    $mids = array();
-    if (!empty($entities)) {
-      $transaction = db_transaction();
+  public function delete_multiple($mids) {
+    $transaction = db_transaction();
+    if (!empty($mids)) {
+      $maps = yandex_map_load_multiple($mids, array());
       try {
-        foreach ($entities as $entity) {
-
-          // Invoke hook_entity_delete().
-          module_invoke_all('yandex_map_delete', $entity);
-
-          // Invoke hook_entity_delete().
-          module_invoke_all('entity_delete', $entity, 'yandex_map');
-          field_attach_delete('yandex_map', $entity);
-          $mids[] = $entity->mid;
+        foreach ($maps as $mid => $map) {
+          // Call the map-specific callback (if any):
+          module_invoke_all('yandex_map_delete', $map);
+          module_invoke_all('entity_delete', $map, 'yandex_map');
+          field_attach_delete('yandex_map', $map);
         }
         db_delete('yandex_map')
           ->condition('mid', $mids, 'IN')
           ->execute();
-
       }
       catch (Exception $e) {
         $transaction->rollback();
@@ -281,13 +276,14 @@ function yandex_map_uri($map) {
 /**
  * Returns a render array with all yandex_map entities.
  */
-function yandex_map_list_page($form, &$form_state, $entity = 'yandex_map') {
-  if ($entity == 'yandex_map') {
-    $path = 'yandex-map';
+function yandex_map_list_page($form, &$form_state) {
+  $entity = 'yandex_map';
+  if (!empty($form_state['values']) && !empty($form_state['values'][$entity])) {
+    if ($map_ids = array_filter($form_state['values'][$entity])) {
+      return yandex_map_multiple_delete_confirm($form, $form_state, $map_ids);
+    }
   }
-  else {
-    $path = 'yandex-map-marker';
-  }
+
   $header = array(
     'mid'        => array('data' => t('Map id'), 'field' => 'mid'),
     'title'      => array('data' => t('Title'), 'field' => 'title'),
@@ -319,7 +315,7 @@ function yandex_map_list_page($form, &$form_state, $entity = 'yandex_map') {
         'data' => array(
           '#type'    => 'link',
           '#title'   => t('edit'),
-          '#href'    => "{$path}/{$row->mid}/edit",
+          '#href'    => "yandex-map/{$row->mid}/edit",
           '#options' => array('query' => $destination),
         )
       ),
@@ -329,7 +325,7 @@ function yandex_map_list_page($form, &$form_state, $entity = 'yandex_map') {
         'data' => array(
           '#type'  => 'link',
           '#title' => $row->title,
-          '#href'  => "{$path}/{$row->mid}",
+          '#href'  => "yandex-map/{$row->mid}",
         ),
       );
     }
@@ -345,55 +341,64 @@ function yandex_map_list_page($form, &$form_state, $entity = 'yandex_map') {
   $form['delete'] = array(
     '#type'   => 'submit',
     '#value'  => t('Delete'),
-    '#submit' => array("{$entity}_edit_delete"),
+    '#submit' => array("yandex_map_multiple_edit_delete"),
   );
-  $form['#action'] = url('admin/config/services/yandex/delete');
-  $form['#method'] = 'get';
   $form['pager']['#theme'] = 'pager';
 
   return $form;
 }
 
+/**
+ * Submit function to yandex_map_list_page().
+ */
+function yandex_map_multiple_edit_delete($form, &$form_state) {
+  $form_state['rebuild'] = TRUE;
+}
 
 /**
  * Menu callback -- ask for confirmation of items deletion
  */
-function yandex_map_multiple_confirm_delete($form, &$form_state) {
-  if (!empty($_GET['yandex_map'])) {
-    $entity_name = 'yandex_map';
-  }
-  if (isset($_GET['yandex_map_marker'])) {
-    $entity_name = 'yandex_map_marker';
-  }
-  if (!empty($entity_name)) {
-    $form[$entity_name] = array('#type' => 'value', '#value' => $_GET[$entity_name]);
-    $form['name'] = array('#type' => 'value', '#value' => $entity_name);
-    return confirm_form($form,
-      t('Are you sure you want to delete selected items'),
-      'admin/config/services/yandex/' . str_replace('_', '-', $entity_name),
-      t('This action cannot be undone.'),
-      t('Delete'),
-      t('Cancel')
+function yandex_map_multiple_delete_confirm($form, &$form_state, $map_ids) {
+  $form['maps'] = array('#prefix' => '<ul>', '#suffix' => '</ul>', '#tree' => TRUE);
+  foreach ($map_ids as $mid => $value) {
+    $title = db_query('SELECT title FROM {yandex_map} WHERE mid = :mid', array(':mid' => $mid))->fetchField();
+    $form['maps'][$mid] = array(
+      '#type' => 'hidden',
+      '#value' => $mid,
+      '#prefix' => '<li>',
+      '#suffix' => check_plain($title) . "</li>\n",
     );
   }
-  drupal_goto('admin/config/services/yandex/');
-}
 
+  $form['#submit'][] = 'yandex_map_multiple_delete_confirm_submit';
+  $confirm_question = format_plural(
+    count($map_ids),
+    'Are you sure you want to delete this item?',
+    'Are you sure you want to delete these items?'
+  );
+  return confirm_form(
+    $form,
+    $confirm_question,
+    'admin/structure/yandex/yandex-map', t('This action cannot be undone.'),
+    t('Delete'),
+    t('Cancel')
+  );
+
+  return $form;
+}
 
 /**
- * Menu callback -- ask for confirmation of items deletion
+ * Submit function to yandex_map_multiple_delete_confirm().
  */
-function yandex_map_multiple_confirm_delete_submit($form, &$form_state) {
-  foreach ($form_state['values'][$form_state['values']['name']] as $mid) {
-    if (!empty($mid)) {
-      $mids[] = $mid;
-    }
+function yandex_map_multiple_delete_confirm_submit($form, &$form_state) {
+  if ($form_state['values']['confirm']) {
+    entity_get_controller('yandex_map')->delete_multiple($form_state['values']['maps']);
+    $count = count($form_state['values']['maps']);
+    watchdog('yandex_maps', 'Deleted @count maps.', array('@count' => $count));
+    drupal_set_message(format_plural($count, 'Deleted 1 map.', 'Deleted @count maps.'));
   }
-  $function = $form_state['values']['name'] . '_load_multiple';
-  entity_get_controller($form_state['values']['name'])->delete_multiple($function($mids));
-  $form_state['redirect'] = 'admin/config/services/yandex/' . str_replace('_', '-', $form_state['values']['name']);
+  $form_state['redirect'] = 'admin/structure/yandex/yandex-map';
 }
-
 
 /**
  * Callback for a page title when this entity is displayed.
