@@ -266,7 +266,7 @@ function yandex_map_settings_build_form(&$form, &$form_state, $type, $options = 
     'yandex_map_default_behavior'  => _yandex_map_setting_get('behavior'),
     'yandex_map_enabled_map_types' => _yandex_map_setting_get('types'),
     'yandex_map_default_type'      => _yandex_map_setting_get('type'),
-    'yandex_map_editTools'         =>  _yandex_map_setting_get('editTools'),
+    'yandex_map_editTools'         => _yandex_map_setting_get('editTools'),
   );
   switch ($type) {
     case 'views':

@@ -563,13 +563,13 @@ Drupal.yandex_maps.actions.save = function(e, map_id, object_id, type) {
 
 Drupal.yandex_maps.actions.del = function(e, map_id, object_id, type) {
   var map = Drupal.yandex_maps.maps[map_id];
-  map.content.each(function(e) {
-    if (e.properties.get('drupal.object_id') == object_id) {
-      object = e;
+  map.content.each(function(obj) {
+    if (obj.properties.get('drupal.object_id') == object_id) {
+      geoobj = obj;
     }
   });
-  object.getMap().geoObjects.remove(object)
-  map.content.remove(object);
+  geoobj.getMap().geoObjects.remove(geoobj);
+  map.content.remove(geoobj);
   map.update();
 }
 
