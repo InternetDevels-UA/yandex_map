@@ -106,22 +106,22 @@ function template_preprocess_views_yandex_map(&$vars) {
   }
 
   // Configure map size.
-  if ($views_extra_controls['yandex_map_defalut_height']) {
-    $vars['map']['height'] =$views_extra_controls['yandex_map_defalut_height'];
+  if ($views_extra_controls['yandex_map_default_height']) {
+    $vars['map']['height'] = $views_extra_controls['yandex_map_default_height'];
     if (is_numeric($vars['map']['height'])) {
       $vars['map']['height'] .= 'px';
     }
   }
-  if ($views_extra_controls['yandex_map_defalut_width']) {
-    $vars['map']['width'] = $views_extra_controls['yandex_map_defalut_width'];
+  if ($views_extra_controls['yandex_map_default_width']) {
+    $vars['map']['width'] = $views_extra_controls['yandex_map_default_width'];
     if (is_numeric($vars['map']['width'])) {
       $vars['map']['width'] .= 'px';
     }
   }
 
   // Configure map behaviors.
-  if ($views_extra_controls['yandex_map_defalut_behavior']) {
-    $vars['map']['behaviors'] = $views_extra_controls['yandex_map_defalut_behavior'];
+  if ($views_extra_controls['yandex_map_default_behavior']) {
+    $vars['map']['behaviors'] = $views_extra_controls['yandex_map_default_behavior'];
   }
 
   // Configure allowed map types.
