@@ -365,7 +365,7 @@ function yandex_map_field_display_node_alter(&$display, $context) {
  * Implements hook_search_execute().
  */
 function yandex_map_search_execute($keys = NULL, $conditions = NULL) {
-  // Build matching conditions.  
+  // Build matching conditions.
   $query = db_select('search_index', 'i', array('target' => 'slave'))
     ->extend('SearchQuery')
     ->extend('PagerDefault');
@@ -382,7 +382,7 @@ function yandex_map_search_execute($keys = NULL, $conditions = NULL) {
 
   // Add the ranking expressions.
   // @TODO
-  
+
   // Load results.
   $find = $query
     ->limit(10)
@@ -408,7 +408,7 @@ function yandex_map_search_execute($keys = NULL, $conditions = NULL) {
       'snippet'    => search_excerpt($keys, $map->rendered),
     );
   }
-  
+
   return $results;
 }
 
@@ -574,6 +574,7 @@ function yandex_map_build_content($map, $view_mode = 'full', $langcode = NULL) {
  */
 function yandex_map_json_decode($json, $map) {
   $settings = drupal_json_decode($json);
+  $map = (object) $map;
   $map->zoom  = $settings['zoom'];
   $map->type  = $settings['type'];
   $map->center = $settings['center'];
